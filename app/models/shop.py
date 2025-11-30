@@ -35,6 +35,5 @@ class Shop(Base):
 
     __table_args__ = (
         Index('idx_owner_active', 'owner_id', 'is_active'),
-        Index('idx_shop_location', 'latitude', 'longitude'),
     )
 
