@@ -25,9 +25,9 @@ class User(Base):
 
     phone = Column(String(20))
 
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # RealtionShips
     owned_shops = relationship("Shop", back_populates="owner", cascade="all, delete-orphan")
