@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.database import get_db
@@ -6,6 +7,7 @@ from app.core.security import verify_password, hash_password
 from app.core.jwt import create_access_token
 from app.schemas.auth import RegisterRequest, LoginRequest, Token
 from app.models.user import User
+from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -48,6 +50,7 @@ async def register_user(
         "email": new_user.email
     }
 
+
 # login a user
 @router.post("/login", response_model=Token)
 async def login_user(
@@ -72,20 +75,32 @@ async def login_user(
     
     # create a jwt
     token = create_access_token({
-        "message": "User login successfully",
         "user_id": user.id,
         "user_type": user.user_type.value
     })
 
-    return Token(access_token=token)
+    response = JSONResponse({
+        "message": "Login successfully",
+        "token": token
+    })
+
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES* 60
+    )
+
+    return response
 
 
 # logout
 @router.post("/logout")
-async def logout_user():
+async def logout_user(response: Response):
 
-    # For JWT: logout = frontend deletes token.
-    # No DB action needed.
+    response.delete_cookie("access_token", httponly=True, samesite="lax")
 
     return {
         "message": "Logged out successfully"
