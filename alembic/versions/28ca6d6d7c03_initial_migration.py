@@ -1,8 +1,8 @@
-"""init tables
+"""Initial migration
 
-Revision ID: 321a362a5791
+Revision ID: 28ca6d6d7c03
 Revises: 
-Create Date: 2025-11-30 16:21:49.740504
+Create Date: 2025-12-04 18:30:32.175680
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '321a362a5791'
+revision: str = '28ca6d6d7c03'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -30,8 +30,8 @@ def upgrade() -> None:
     sa.Column('user_type', sa.Enum('NORMAL', 'SHOP_OWNER', name='usertype'), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=True),
     sa.Column('phone', sa.String(length=20), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_user_type_active', 'users', ['user_type', 'is_active'], unique=False)
@@ -46,8 +46,8 @@ def upgrade() -> None:
     sa.Column('address', sa.String(length=255), nullable=True),
     sa.Column('phone', sa.String(length=20), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )

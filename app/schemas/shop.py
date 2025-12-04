@@ -11,8 +11,6 @@ class ShopBase(BaseModel):
     description: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
-    latitude: Optional[Decimal] = None
-    longitude: Optional[Decimal] = None
 
 
 class ShopCreate(ShopBase):
@@ -24,8 +22,6 @@ class ShopUpdate(BaseModel):
     description: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
-    latitude: Optional[Decimal] = None
-    longitude: Optional[Decimal] = None
     is_active: Optional[bool] = None
 
 
