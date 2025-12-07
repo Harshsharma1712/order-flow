@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, DateTime,ForeignKey, Numeric, Enum, Index
+from sqlalchemy import Column, Integer, DateTime,ForeignKey, Numeric, Enum, Index, Text
 
 from sqlalchemy.orm import relationship
 
@@ -20,9 +20,13 @@ class Order(Base):
 
     status = Column(Enum(ItemStatus), nullable=False, default=ItemStatus.PENDING)
 
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    delivery_address = Column(Text, nullable=True)
 
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # relationships
     user = relationship("User", back_populates="orders")

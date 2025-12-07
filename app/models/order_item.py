@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, DateTime,ForeignKey, Numeric, Index
+from sqlalchemy import Column, Integer, DateTime,ForeignKey, Numeric, Index, Text
 
 from sqlalchemy.orm import relationship
 
@@ -21,7 +21,9 @@ class OrderItem(Base):
 
     subtotal = Column(Numeric(10, 2), nullable=False)
 
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # relationships
     order = relationship("Order", back_populates="order_items")
