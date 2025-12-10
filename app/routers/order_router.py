@@ -7,8 +7,10 @@ from decimal import Decimal
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.item import Item
+from app.models.shop import Shop
 from app.core.database import get_db
 from app.schemas.order import OrderCreate, OrderDetailResponse
+from app.schemas.order import OrderStatusUpdate
 from app.auth.dependencies import get_current_user
 
 
@@ -104,5 +106,89 @@ async def create_order(
     return full_order
 
 
+# GET Shop Orders (Shop Owner Only)
+@router.get("/shop/{shop_id}", response_model=list[OrderDetailResponse])
+async def get_shop_orders(
+    shop_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # check if shop belongs to current owner
+    result = await db.execute(
+        select(Shop).where(Shop.id == shop_id, Shop.owner_id == current_user.id)
+    )
+
+    shop = result.scalars().first()
+
+    if not shop:
+        raise HTTPException(
+            status_code=403,
+            detail= "You are not the owner of this shop"
+        )
+    
+    query = (
+        select(Order)
+        .where(Order.shop_id == shop_id)
+        .options(
+            selectinload(Order.user),
+            selectinload(Order.shop),
+            selectinload(Order.order_items).selectinload(OrderItem.item)
+        )
+        .order_by(Order.created_at.desc())
+    )
+
+    result = await db.execute(query)
+
+    return result.scalars().unique().all()
+
+
+# Update Order Status (Shop Owner Only)
+@router.patch("/{order_id}/status", response_model=OrderDetailResponse)
+async def update_order_status(
+    order_id: int,
+    data: OrderStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # 1. Fetch order with shop relation
+    query = (
+        select(Order)
+        .where(Order.id == order_id)
+        .options(selectinload(Order.shop))
+    )
+    result = await db.execute(query)
+
+    order = result.scalars().first()
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail= "Order not found"
+        )
+    
+    # 2. Check owner permissions
+    if order.shop.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail= "You are not the owner of this shop"
+        )
+    
+    # 3. Update status
+    order.status = data.status
+
+    await db.commit()
+
+    # 4. Fetch full order with relationships for response
+    full_result = await db.execute(
+        select(Order)
+        .where(Order.id == order.id)
+        .options(
+            selectinload(Order.user),
+            selectinload(Order.shop),
+            selectinload(Order.order_items).selectinload(OrderItem.item)
+        )
+    )
+
+    return full_result.scalars().first()
 
 
