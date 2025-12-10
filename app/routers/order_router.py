@@ -12,11 +12,12 @@ from app.core.database import get_db
 from app.schemas.order import OrderCreate, OrderDetailResponse
 from app.schemas.order import OrderStatusUpdate
 from app.auth.dependencies import get_current_user
+from app.utils.resend_email_service import send_order_ready_email
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
-
+# POST Create Order by user
 @router.post("/create", response_model=OrderDetailResponse)
 async def create_order(
     data: OrderCreate,
@@ -177,6 +178,46 @@ async def update_order_status(
     order.status = data.status
 
     await db.commit()
+
+    # SEND EMAIL IF STATUS = READY
+    if data.status.value.lower() == "ready":
+        # Fetch full order details for email
+        email_query = (
+            select(Order)
+            .where(Order.id == order.id)
+            .options(
+                selectinload(Order.user),
+                selectinload(Order.shop),
+                selectinload(Order.order_items).selectinload(OrderItem.item)
+            )
+        )
+
+        email_result = await db.execute(email_query)
+        order_full = email_result.scalars().first()
+
+        # Prepare email data
+        email_payload = {
+            "id": order_full.id,
+            "shop_name": order_full.shop.name,
+            "total_amount": str(order_full.total_amount),
+            "delivery_address": order_full.delivery_address,
+            "items": [
+                {
+                    "name": oi.item.name,
+                    "quantity": oi.quantity,
+                    "subtotal": str(oi.subtotal)
+                }
+                for oi in order_full.order_items
+            ]
+        }
+
+        # Send email to user
+        await send_order_ready_email(
+            to_email=order_full.user.email,
+            order=email_payload
+        )
+
+
 
     # 4. Fetch full order with relationships for response
     full_result = await db.execute(
