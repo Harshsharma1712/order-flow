@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.schemas.order import OrderCreate, OrderDetailResponse
 from app.schemas.order import OrderStatusUpdate
 from app.auth.dependencies import get_current_user
-from app.utils.resend_email_service import send_order_ready_email
+from app.utils.resend_email_service import send_order_ready_email, send_order_picked_email
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -143,7 +143,7 @@ async def get_shop_orders(
     return result.scalars().unique().all()
 
 
-# Update Order Status (Shop Owner Only)
+# Update Order Status (Shop Owner Only) and send email when status is ready
 @router.patch("/{order_id}/status", response_model=OrderDetailResponse)
 async def update_order_status(
     order_id: int,
@@ -213,6 +213,45 @@ async def update_order_status(
 
         # Send email to user
         await send_order_ready_email(
+            to_email=order_full.user.email,
+            order=email_payload
+        )
+    
+
+    # SEND EMAIL IF STATUS = PICKED
+    if data.status.value.lower() == "picked":
+        # Fetch full order details for email
+        email_query = (
+            select(Order)
+            .where(Order.id == order.id)
+            .options(
+                selectinload(Order.user),
+                selectinload(Order.shop),
+                selectinload(Order.order_items).selectinload(OrderItem.item)
+            )
+        )
+
+        email_result = await db.execute(email_query)
+        order_full = email_result.scalars().first()
+
+        # Prepare email data
+        email_payload = {
+            "id": order_full.id,
+            "shop_name": order_full.shop.name,
+            "total_amount": str(order_full.total_amount),
+            "delivery_address": order_full.delivery_address,
+            "items": [
+                {
+                    "name": oi.item.name,
+                    "quantity": oi.quantity,
+                    "subtotal": str(oi.subtotal)
+                }
+                for oi in order_full.order_items
+            ]
+        }
+
+        # Send email to user
+        await send_order_picked_email(
             to_email=order_full.user.email,
             order=email_payload
         )
