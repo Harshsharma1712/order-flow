@@ -1,3 +1,5 @@
+# This is a file to connect the postgres database async to the application
+
 import asyncio
 from logging.config import fileConfig
 from sqlalchemy import pool
