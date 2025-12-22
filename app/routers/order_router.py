@@ -3,13 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from decimal import Decimal
+from datetime import datetime, timezone
 
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.item import Item
 from app.models.shop import Shop
+from app.models.enums import ItemStatus
 from app.core.database import get_db
-from app.schemas.order import OrderCreate, OrderDetailResponse
+from app.schemas.order import OrderCreate, OrderDetailResponse, OrderCancelRequest, ItemStatusEnum
 from app.schemas.order import OrderStatusUpdate
 from app.auth.dependencies import get_current_user
 from app.utils.resend_email_service import send_order_ready_email, send_order_picked_email
@@ -143,7 +145,7 @@ async def get_shop_orders(
     return result.scalars().unique().all()
 
 
-# Update Order Status (Shop Owner Only) and send email when status is ready
+# Update Order Status (Shop Owner Only) and send email when status is ready and picked
 @router.patch("/{order_id}/status", response_model=OrderDetailResponse)
 async def update_order_status(
     order_id: int,
@@ -270,5 +272,63 @@ async def update_order_status(
     )
 
     return full_result.scalars().first()
+
+
+# Cancel order 
+@router.patch("/{order_id}/cancel", response_model=OrderDetailResponse)
+async def cancel_order(
+    order_id: int,
+    data: OrderCancelRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    print("Begin Enpoint")
+    # 1. Fetch order
+    query = (
+        select(Order)
+        .where(
+            Order.id == order_id,
+            Order.user_id == current_user.id
+        )
+        .options(
+            selectinload(Order.order_items).selectinload(OrderItem.item),
+            selectinload(Order.shop)
+        )
+    )
+
+    result = await db.execute(query)
+    order = result.scalars().first()
+
+    print("Order fetched", order)
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found"
+        )
+    
+    # 2. Validate cancellation rules
+    if order.status == "cancelled":
+        raise HTTPException(
+            status_code=400,
+            detail= "Order already cancelled"
+        )
+    
+    if order.status != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail= f"Order cannot be cancelled when status is '{order.status}'"
+        )
+    
+    # 3. Cancel order
+    order.status = ItemStatusEnum.CANCELLED
+
+    order.cancelled_at = datetime.now(timezone.utc)
+    order.cancel_reason = data.cancel_reason
+
+    await db.commit()
+    await db.refresh(order)
+
+    return order
 
 

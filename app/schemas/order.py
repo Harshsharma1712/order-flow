@@ -72,3 +72,13 @@ class OrderDetailResponse(OrderResponse):
     user: UserResponse
     shop: ShopResponse
     order_items: List[OrderItemResponse]
+
+
+class OrderCancelRequest(BaseModel):
+    cancel_reason: Optional[str] = Field(
+        None,
+        max_length=255,
+        description="Reason for cancelling the order"
+    )
+
+

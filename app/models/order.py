@@ -28,6 +28,11 @@ class Order(Base):
 
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
+    # for order cancelation 
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancel_reason = Column(Text, nullable=True)
+
+
     # relationships
     user = relationship("User", back_populates="orders")
 

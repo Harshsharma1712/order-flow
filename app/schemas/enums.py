@@ -9,3 +9,4 @@ class ItemStatusEnum(str, Enum):
     PENDING = "pending"
     READY = "ready"
     PICKED = "picked"
+    CANCELLED = "cancelled"

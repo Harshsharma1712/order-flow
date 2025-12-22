@@ -8,3 +8,4 @@ class ItemStatus(str, PyEnum):
     PENDING = "pending"
     READY = "ready"
     PICKED = "picked"
+    CANCELLED = "cancelled"
